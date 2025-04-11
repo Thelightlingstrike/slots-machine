@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Challenge Slot Machine</title>
+  <style>
+    body {
+      margin: 0;
+      background-color: #000;
+      color: #fff;
+      font-family: Arial, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      overflow: hidden;
+    }
+    .slot-container {
+      background: #111;
+      border: 4px solid #0ff;
+      border-radius: 20px;
+      padding: 30px;
+      width: 90%;
+      max-width: 600px;
+      text-align: center;
+      box-sizing: border-box;
+      position: relative;
+      z-index: 1; /* Ensures it is above any background elements */
+    }
+    .challenge-display {
+      font-size: 2rem;
+      height: 100px;
+      margin-bottom: 20px;
+      background: #222;
+      border: 2px solid #0ff;
+      border-radius: 12px;
+      overflow: hidden;
+      position: relative;
+      z-index: 2; /* Ensure it appears on top of any other content */
+    }
+    .challenge-list-inner {
+      position: absolute;
+      width: 100%;
+      animation-fill-mode: forwards;
+    }
+    .challenge-item {
+      height: 100px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    button {
+      background: #0ff;
+      color: #000;
+      font-size: 1.5rem;
+      padding: 10px 30px;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      margin: 10px;
+    }
+    button:hover {
+      background: #0cc;
+    }
+    #settings-panel {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      margin-top: 20px;
+      z-index: 2; /* Keep the settings on top when visible */
+    }
+    .settings-toggle {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      background: #0ff;
+      color: #000;
+      border-radius: 8px;
+      font-size: 1rem;
+      padding: 5px 15px;
+      cursor: pointer;
+      z-index: 10;
+    }
+    textarea {
+      width: 90%;
+      height: 150px;
+      margin: 10px 0;
+      font-size: 1rem;
+      border-radius: 8px;
+      padding: 10px;
+    }
+    .link-generator {
+      margin-top: 20px;
+      font-size: 1rem;
+    }
+    .link-generator input {
+      padding: 10px;
+      margin: 5px;
+      font-size: 1rem;
+      width: 300px;
+      border-radius: 8px;
+    }
+    .link-generator button {
+      padding: 10px;
+      background-color: #0ff;
+      color: #000;
+      font-size: 1rem;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    .link-generator button:hover {
+      background-color: #0cc;
+    }
+  </style>
+</head>
+<body>
+  <div class="settings-toggle" onclick="toggleSettings()">⚙️ Settings</div>
+  <div class="slot-container">
+    <div class="challenge-display" id="challenge-display">
+      <div id="reel" class="challenge-list-inner"></div>
+    </div>
+    <button onclick="spinChallenge()">SPIN 🎰</button>
+    <div id="settings-panel">
+      <textarea id="challenge-list" placeholder="Enter one challenge per line..."></textarea>
+      <input type="file" id="file-upload" accept=".txt" />
+      <button onclick="saveChallenges()">💾 Save</button>
+      <div class="link-generator">
+        <button onclick="generateLink()">Generate and Copy Link</button>
+        <input type="text" id="generated-link" readonly />
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let challenges = JSON.parse(localStorage.getItem('challengeList')) || [
+      "Only use gray weapons",
+      "Wear your mask for one round",
+      "Land at edge of map",
+      "Play with a blindfold for the drop",
+      "Dance every time you get a kill",
+      "Use only your pickaxe for the first fight"
+    ];
+
+    const reel = document.getElementById('reel');
+    const displayHeight = 100;
+
+    function spinChallenge() {
+      if (challenges.length === 0) return;
+
+      reel.innerHTML = '';
+
+      // Generate visible spin list with buffer repeats
+      const spinList = [];
+      for (let i = 0; i < 20; i++) {
+        const randomChallenge = challenges[Math.floor(Math.random() * challenges.length)];
+        spinList.push(randomChallenge);
+      }
+
+      spinList.forEach((text) => {
+        const div = document.createElement('div');
+        div.className = 'challenge-item';
+        div.textContent = text;
+        reel.appendChild(div);
+      });
+
+      const finalChallenge = spinList[spinList.length - 1];
+      const totalHeight = displayHeight * spinList.length;
+
+      // Reset animation and force a reflow
+      reel.style.transition = 'none';
+      reel.style.transform = 'translateY(0)';
+      void reel.offsetHeight; // This forces a reflow
+
+      // Wait a tiny bit and then start the animation again
+      setTimeout(() => {
+        reel.style.transition = 'transform 2s cubic-bezier(0.3, 1, 0.4, 1)';
+        reel.style.transform = `translateY(-${totalHeight - displayHeight}px)`;
+      }, 50);
+    }
+
+    function toggleSettings() {
+      const panel = document.getElementById('settings-panel');
+      panel.style.display = panel.style.display === 'flex' ? 'none' : 'flex';
+      if (panel.style.display === 'flex') {
+        document.getElementById('challenge-list').value = challenges.join('\n');
+      }
+    }
+
+    function saveChallenges() {
+      const textarea = document.getElementById('challenge-list');
+      challenges = textarea.value.split('\n').map(c => c.trim()).filter(c => c);
+      localStorage.setItem('challengeList', JSON.stringify(challenges));
+      alert("Challenge list saved!");
+    }
+
+    document.getElementById('file-upload').addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(event) {
+        const text = event.target.result;
+        challenges = text.split('\n').map(c => c.trim()).filter(c => c);
+        document.getElementById('challenge-list').value = challenges.join('\n');
+      };
+      reader.readAsText(file);
+    });
+
+    function generateLink() {
+      // Encode the challenges array and add it as a query parameter in the URL
+      const encodedChallenges = encodeURIComponent(JSON.stringify(challenges));
+      const generatedLink = `${window.location.origin}${window.location.pathname}?challenges=${encodedChallenges}`;
+      const linkInput = document.getElementById('generated-link');
+      linkInput.value = generatedLink;
+      linkInput.select();
+      linkInput.setSelectionRange(0, 99999); // For mobile devices
+      document.execCommand("copy");
+      alert("Link copied to clipboard!");
+    }
+
+    // If the page is loaded with a query string, load the challenges from there
+    window.onload = function() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const challengesParam = urlParams.get('challenges');
+      if (challengesParam) {
+        challenges = JSON.parse(decodeURIComponent(challengesParam));
+        localStorage.setItem('challengeList', JSON.stringify(challenges));
+        document.getElementById('challenge-list').value = challenges.join('\n');
+      }
+    }
+  </script>
+</body>
+</html>
