@@ -27,7 +27,7 @@
       text-align: center;
       box-sizing: border-box;
       position: relative;
-      z-index: 1;
+      z-index: 1; /* Ensures it is above any background elements */
     }
     .challenge-display {
       font-size: 2rem;
@@ -38,7 +38,7 @@
       border-radius: 12px;
       overflow: hidden;
       position: relative;
-      z-index: 2;
+      z-index: 2; /* Ensure it appears on top of any other content */
     }
     .challenge-list-inner {
       position: absolute;
@@ -64,18 +64,78 @@
     button:hover {
       background: #0cc;
     }
+    #settings-panel {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      margin-top: 20px;
+      z-index: 2; /* Keep the settings on top when visible */
+    }
+    .settings-toggle {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      background: #0ff;
+      color: #000;
+      border-radius: 8px;
+      font-size: 1rem;
+      padding: 5px 15px;
+      cursor: pointer;
+      z-index: 10;
+    }
+    textarea {
+      width: 90%;
+      height: 150px;
+      margin: 10px 0;
+      font-size: 1rem;
+      border-radius: 8px;
+      padding: 10px;
+    }
+    .link-generator {
+      margin-top: 20px;
+      font-size: 1rem;
+    }
+    .link-generator input {
+      padding: 10px;
+      margin: 5px;
+      font-size: 1rem;
+      width: 300px;
+      border-radius: 8px;
+    }
+    .link-generator button {
+      padding: 10px;
+      background-color: #0ff;
+      color: #000;
+      font-size: 1rem;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    .link-generator button:hover {
+      background-color: #0cc;
+    }
   </style>
 </head>
 <body>
+  <div class="settings-toggle" onclick="toggleSettings()">⚙️ Settings</div>
   <div class="slot-container">
     <div class="challenge-display" id="challenge-display">
       <div id="reel" class="challenge-list-inner"></div>
     </div>
     <button onclick="spinChallenge()">SPIN 🎰</button>
+    <div id="settings-panel">
+      <textarea id="challenge-list" placeholder="Enter one challenge per line..."></textarea>
+      <input type="file" id="file-upload" accept=".txt" />
+      <button onclick="saveChallenges()">💾 Save</button>
+      <div class="link-generator">
+        <button onclick="generateLink()">Generate and Copy Link</button>
+        <input type="text" id="generated-link" readonly />
+      </div>
+    </div>
   </div>
 
   <script>
-    let challenges = [
+    let challenges = JSON.parse(localStorage.getItem('challengeList')) || [
       "Only use gray weapons",
       "Wear your mask for one round",
       "Land at edge of map",
@@ -86,17 +146,6 @@
 
     const reel = document.getElementById('reel');
     const displayHeight = 100;
-
-    // WebSocket setup
-    const socket = new WebSocket("ws://localhost:8080");
-
-    socket.addEventListener("message", function(event) {
-      const data = JSON.parse(event.data);  // Parse the received JSON
-
-      if (data.event === "slotsStart") {
-        spinChallenge();  // Start the game when the server triggers it
-      }
-    });
 
     function spinChallenge() {
       if (challenges.length === 0) return;
@@ -123,7 +172,7 @@
       // Reset animation and force a reflow
       reel.style.transition = 'none';
       reel.style.transform = 'translateY(0)';
-      void reel.offsetHeight;  // This forces a reflow
+      void reel.offsetHeight; // This forces a reflow
 
       // Wait a tiny bit and then start the animation again
       setTimeout(() => {
@@ -132,13 +181,54 @@
       }, 50);
     }
 
-    // WebSocket sending JSON data example (when a spin is triggered)
-    function startGame() {
-      const message = {
-        event: "slotsStart",  // Event name
-        data: { /* additional data here if needed */ }
+    function toggleSettings() {
+      const panel = document.getElementById('settings-panel');
+      panel.style.display = panel.style.display === 'flex' ? 'none' : 'flex';
+      if (panel.style.display === 'flex') {
+        document.getElementById('challenge-list').value = challenges.join('\n');
+      }
+    }
+
+    function saveChallenges() {
+      const textarea = document.getElementById('challenge-list');
+      challenges = textarea.value.split('\n').map(c => c.trim()).filter(c => c);
+      localStorage.setItem('challengeList', JSON.stringify(challenges));
+      alert("Challenge list saved!");
+    }
+
+    document.getElementById('file-upload').addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(event) {
+        const text = event.target.result;
+        challenges = text.split('\n').map(c => c.trim()).filter(c => c);
+        document.getElementById('challenge-list').value = challenges.join('\n');
       };
-      socket.send(JSON.stringify(message));  // Send message to server
+      reader.readAsText(file);
+    });
+
+    function generateLink() {
+      // Encode the challenges array and add it as a query parameter in the URL
+      const encodedChallenges = encodeURIComponent(JSON.stringify(challenges));
+      const generatedLink = `${window.location.origin}${window.location.pathname}?challenges=${encodedChallenges}`;
+      const linkInput = document.getElementById('generated-link');
+      linkInput.value = generatedLink;
+      linkInput.select();
+      linkInput.setSelectionRange(0, 99999); // For mobile devices
+      document.execCommand("copy");
+      alert("Link copied to clipboard!");
+    }
+
+    // If the page is loaded with a query string, load the challenges from there
+    window.onload = function() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const challengesParam = urlParams.get('challenges');
+      if (challengesParam) {
+        challenges = JSON.parse(decodeURIComponent(challengesParam));
+        localStorage.setItem('challengeList', JSON.stringify(challenges));
+        document.getElementById('challenge-list').value = challenges.join('\n');
+      }
     }
   </script>
 </body>
