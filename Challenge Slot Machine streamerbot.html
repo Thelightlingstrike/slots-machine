@@ -136,7 +136,7 @@
 
   <script>
 
-    const spinRedeemUuid = "34d33f12-4535-4d05-9567-e00845da0535"; // Once you have the UUID, paste it between the quotes.
+    const spinRedeemUuid = ""; // Once you have the UUID, paste it between the quotes.
 
     let challenges = JSON.parse(localStorage.getItem('challengeList')) || [
       "Only use gray weapons",
@@ -151,7 +151,7 @@
     const displayHeight = 100;
 
     // WebSocket setup
-    const socket = new WebSocket("ws://localhost:8088");
+    const socket = new WebSocket("ws://localhost:8080");
     socket.addEventListener("open", function (event) {
       console.log("WebSocket connection opened");
       connectToSb();
