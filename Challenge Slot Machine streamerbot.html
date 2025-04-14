@@ -147,6 +147,17 @@
     const reel = document.getElementById('reel');
     const displayHeight = 100;
 
+    // WebSocket setup
+    const socket = new WebSocket("ws://localhost:8088");
+
+    socket.addEventListener("message", function (event) {
+      const data = JSON.parse(event.data);  // Parse the received JSON
+
+      if (data.event === "slotsStart") {
+        spinChallenge();  // Start the game when the server triggers it
+      }
+    });
+
     function spinChallenge() {
       if (challenges.length === 0) return;
 
