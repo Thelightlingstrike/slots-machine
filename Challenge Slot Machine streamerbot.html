@@ -135,6 +135,9 @@
   </div>
 
   <script>
+
+    const spinRedeemUuid = ""; // Once you have the UUID, paste it between the quotes.
+
     let challenges = JSON.parse(localStorage.getItem('challengeList')) || [
       "Only use gray weapons",
       "Wear your mask for one round",
@@ -146,6 +149,25 @@
 
     const reel = document.getElementById('reel');
     const displayHeight = 100;
+
+    // WebSocket setup
+    const socket = new WebSocket("ws://localhost:8080");
+    socket.addEventListener("open", function (event) {
+      console.log("WebSocket connection opened");
+      connectToSb();
+    });
+
+    socket.addEventListener("message", function (event) {
+      const data = JSON.parse(event.data);  // Parse the received JSON
+      console.log(data); // Find the redeem UUID in devtools console data.data.reward.id
+      if (!data.data) {
+        return;
+      }
+      // Leave this, test your redeem then comment out
+      if (data.data.reward.id === spinRedeemUuid) {
+        spinChallenge();
+      }
+    });
 
     function spinChallenge() {
       if (challenges.length === 0) return;
@@ -218,6 +240,26 @@
       linkInput.setSelectionRange(0, 99999); // For mobile devices
       document.execCommand("copy");
       alert("Link copied to clipboard!");
+    }
+
+  const connectToSb = () => {
+      console.log("Connecting to SB");
+      let subMessage = {
+        "request": "Subscribe",
+        "id": "1234",
+        "events": {
+          "Twitch": [
+            "Follow",
+            "RewardRedemption",
+            "Cheer",
+            "Sub",
+            "ReSub",
+            "GiftSub",
+            "GiftBomb"
+          ]
+        },
+      }
+      socket.send(JSON.stringify(subMessage));
     }
 
     // If the page is loaded with a query string, load the challenges from there
